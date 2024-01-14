@@ -1,0 +1,6 @@
+databases[mysql]
+sqlalchemy
+pyjwt
+passlib
+python-multipart
+bcrypt
