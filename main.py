@@ -160,8 +160,8 @@ async def create_voter(voter: models.Voter):
 
         # Insert the new voter with the hashed password
         insert_voter_query = """
-            INSERT INTO voters (voter_id, full_name, DOB, password, UVC, constituency_id)
-            VALUES (:voter_id, :full_name, :DOB, :password, :UVC, :constituency_id)
+            INSERT INTO voters (voter_id, full_name, DOB, password, UVC, constituency_id, voted)
+            VALUES (:voter_id, :full_name, :DOB, :password, :UVC, :constituency_id, 'false')
         """
         await database.execute(insert_voter_query, values={**voter.dict(), "password": hashed_password})
 
@@ -307,6 +307,7 @@ async def delete_candidate_by_id(canid: int):
 async def activate_election():
     update_query = "UPDATE election SET is_active = 'true'"
     await database.execute(update_query)
+    await database.execute("UPDATE candidate SET vote_count = 0")
     return {"status": "Election has been activated"}
 
 @app.put("/election/deactivate", status_code=status.HTTP_200_OK)
@@ -322,6 +323,15 @@ async def get_election_status():
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Election status not found")
     return {"is_active": result["is_active"]}
+
+@app.get("/voters")
+async def get_all_voters():
+    query = "SELECT * FROM voters"
+    result = await database.fetch_all(query)
+    print(result)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Election status not found")
+    return result
 
 
 
