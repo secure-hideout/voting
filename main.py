@@ -343,5 +343,14 @@ async def get_by_id(voter_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Election status not found")
     return result
 
+@app.get("/vote/{voter_id}/{canid}")
+async def get_by_id(voter_id,canid):
+    query = "UPDATE voters SET voted = 'true' WHERE voter_id = '"+voter_id+"'"
+    print("UPDATE voters SET voted = 'true' WHERE voter_id = "+voter_id)
+    await database.execute(query)
+    vote_count = await database.fetch_one("SELECT * FROM candidate WHERE canid = '"+canid+"'")
+    await database.execute("UPDATE candidate SET vote_count ='"+str(int(vote_count[-1]+1))+"' WHERE canid ='"+canid+"'")
+    return "Voted Successfully "
+
 
 
