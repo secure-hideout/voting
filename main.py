@@ -308,6 +308,7 @@ async def activate_election():
     update_query = "UPDATE election SET is_active = 'true'"
     await database.execute(update_query)
     await database.execute("UPDATE candidate SET vote_count = 0")
+    await database.execute("UPDATE voters SET voted = 'false'")
     return {"status": "Election has been activated"}
 
 @app.put("/election/deactivate", status_code=status.HTTP_200_OK)
