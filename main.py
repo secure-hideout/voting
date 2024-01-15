@@ -486,7 +486,7 @@ async def get_election_results():
         return response
 
 
-@app.get("/gevs/constituency-results")
+@app.get("/results/constituency-results")
 async def get_constituency_results():
     # Query to get the winning candidate for each constituency
     constituency_query = """
@@ -513,3 +513,23 @@ async def get_constituency_results():
         raise HTTPException(status_code=404, detail="No constituency results found")
 
     return constituency_results
+
+@app.get("/results/candidate-results")
+async def get_candidate_results():
+    # Query to get the status and votes for all candidates by constituency
+    candidate_query = """
+        SELECT con.constituency_name AS constituency,
+               ca.candidate AS candidate,
+               p.party AS party,
+               ca.vote_count AS votes
+        FROM constituency AS con
+        LEFT JOIN candidate AS ca ON con.consitituency_id = ca.consitituency_id
+        LEFT JOIN party AS p ON ca.party_id = p.party_id;
+    """
+
+    candidate_results = await database.fetch_all(candidate_query)
+
+    if not candidate_results:
+        raise HTTPException(status_code=404, detail="No candidate results found")
+
+    return candidate_results
