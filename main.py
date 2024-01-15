@@ -276,6 +276,19 @@ async def get_candidates_by_constituency(consitituency_id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No candidates found for the specified constituency")
     return candidates
 
+@app.get("/candidates/by-constituency-with-party/{consitituency_id}")
+async def get_candidates_by_constituency_with_party(consitituency_id: int):
+    query = """
+        SELECT c.*, p.party
+        FROM candidate AS c
+        JOIN party AS p ON c.party_id = p.party_id
+        WHERE c.consitituency_id = :consitituency_id
+    """
+    candidates = await database.fetch_all(query, values={"consitituency_id": consitituency_id})
+    if not candidates:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No candidates found for the specified constituency")
+    return candidates
+
 @app.get("/candidates")
 async def get_all_candidates():
     query = "SELECT * FROM candidate"
