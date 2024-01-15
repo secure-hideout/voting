@@ -352,5 +352,135 @@ async def get_by_id(voter_id,canid):
     await database.execute("UPDATE candidate SET vote_count ='"+str(int(vote_count[-1]+1))+"' WHERE canid ='"+canid+"'")
     return "Voted Successfully "
 
+@app.get("/candidates/highest-vote-count")
+async def get_candidate_with_highest_vote_count():
+    query = """
+        SELECT canid, consitituency_id, MAX(vote_count), candidate AS max_vote_count
+        FROM candidate
+        GROUP BY canid, consitituency_id
+        HAVING MAX(vote_count) = (SELECT MAX(vote_count) FROM candidate);
+
+    """
+    result = await database.fetch_one(query)
+
+    if not result:
+        raise HTTPException(status_code=404, detail="No candidate found with the highest vote count in any constituency")
+
+    return result
+
+@app.get("/parties/most-seats-won")
+async def get_party_with_most_seats_won():
+    query = """
+        SELECT p.party_id, p.party, COUNT(c.canid) AS seats_won
+        FROM party AS p
+        JOIN candidate AS c ON p.party_id = c.party_id
+        WHERE c.vote_count = (SELECT MAX(vote_count) FROM candidate)
+        GROUP BY p.party_id, p.party
+        ORDER BY seats_won DESC
+        LIMIT 1;
+    """
+    result = await database.fetch_one(query)
+
+    if not result:
+        return "Hung Parliament"
+
+    return result
+@app.get("/gevs/constituency/{constituency_name}")
+async def get_candidates_by_constituency(constituency_name: str):
+    query = """
+        SELECT c.candidate AS name, p.party AS party, c.vote_count AS vote
+        FROM candidate AS c
+        JOIN constituency AS con ON c.consitituency_id = con.consitituency_id
+        JOIN party AS p ON c.party_id = p.party_id
+        WHERE con.constituency_name = :constituency_name
+    """
+    values = {"constituency_name": constituency_name}
+    results = await database.fetch_all(query, values=values)
+
+    if not results:
+        raise HTTPException(status_code=404, detail="No candidates found for the specified constituency")
+
+    formatted_result = {
+        "constituency": constituency_name,
+        "result": results
+    }
+
+    return formatted_result
 
 
+@app.get("/election-results")
+async def get_election_results():
+    # Query to get candidate with the highest vote count
+    candidate_query = """
+        SELECT canid, consitituency_id, MAX(vote_count) AS max_vote_count
+        FROM candidate
+        GROUP BY canid, consitituency_id
+        HAVING MAX(vote_count) = (SELECT MAX(vote_count) FROM candidate);
+    """
+
+    # Query to get party that won the most seats
+    party_query = """
+        SELECT p.party_id, p.party, COUNT(c.canid) AS seats_won
+        FROM party AS p
+        JOIN candidate AS c ON p.party_id = c.party_id
+        WHERE c.vote_count = (SELECT MAX(vote_count) FROM candidate)
+        GROUP BY p.party_id, p.party
+        ORDER BY seats_won DESC
+        LIMIT 1;
+    """
+
+    # Execute both queries concurrently
+    candidate_result = await database.fetch_one(candidate_query)
+    party_result = await database.fetch_one(party_query)
+
+    if not candidate_result or not party_result:
+        raise HTTPException(status_code=404, detail="No results found")
+
+    return {
+        "candidate_with_highest_vote_count": candidate_result,
+        "party_with_most_seats_won": party_result
+    }
+
+
+@app.get("/gevs/results", response_model=dict)
+async def get_election_results():
+    # Check if the election is active
+    check_election_query = "SELECT is_active FROM election WHERE id = 1"
+    is_active_result = await database.fetch_one(check_election_query)
+
+    if not is_active_result:
+        raise HTTPException(status_code=404, detail="Election status not found")
+
+    is_active = is_active_result["is_active"]
+
+    if is_active == "true":
+        # Election is ongoing
+        return {
+            "status": "Pending",
+        }
+    else:
+        # Election has completed
+        # Query to get MP seats won by political parties
+        seats_query = """
+            SELECT p.party AS party, COUNT(c.canid) AS seat
+            FROM party AS p
+            LEFT JOIN candidate AS c ON p.party_id = c.party_id
+            GROUP BY p.party;
+        """
+
+        seats_result = await database.fetch_all(seats_query)
+
+        if not seats_result:
+            raise HTTPException(status_code=404, detail="No election results found")
+
+        # Find the party with the most seats (winner)
+        winner_party = max(seats_result, key=lambda x: x["seat"])["party"]
+
+        # Construct the response
+        response = {
+            "status": "Completed",
+            "winner": winner_party,
+            "seats": seats_result
+        }
+
+        return response
