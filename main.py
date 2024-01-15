@@ -7,6 +7,8 @@ from sqlalchemy import select, update
 import jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
+
 from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException, Depends, status
 metadata = sqlalchemy.MetaData()
@@ -24,6 +26,13 @@ voters = sqlalchemy.Table(
 
 database = Database(DATABASE_URL)
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -99,6 +108,7 @@ async def shutdown():
 async def root():
     return {"message": "Hello World"}
 
+
 @app.get("/hello/{name}")
 async def say_hello(name: str):
     return {"message": f"Hello {name}"}
@@ -132,3 +142,5 @@ async def create_voter(voter: models.Voter):
     except Exception as e:
         await transaction.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
