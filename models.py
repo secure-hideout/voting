@@ -20,3 +20,48 @@ class Voter(BaseModel):
     UVC: Optional[str] = Field(None, max_length=45)
     constituency_id: Optional[int] = None
 
+class ConstituencyBase(BaseModel):
+    constituency_name: str
+
+class ConstituencyCreate(ConstituencyBase):
+    pass
+
+class Constituency(ConstituencyBase):
+    constituency_id: int
+
+    class Config:
+        orm_mode = True
+
+from pydantic import BaseModel
+
+class PartyBase(BaseModel):
+    party: str
+
+class PartyCreate(PartyBase):
+    pass
+
+class Party(PartyBase):
+    party_id: int
+
+    class Config:
+        orm_mode = True
+
+class CandidateBase(BaseModel):
+    party_id: Optional[int]
+    constituency_id: Optional[int]
+    candidate: Optional[str]
+    vote_count: Optional[int]  # Make vote_count optional
+
+class CandidateCreate(CandidateBase):
+    pass
+
+class CandidateUpdate(CandidateBase):
+    pass
+
+class Candidate(CandidateBase):
+    pass
+
+    class Config:
+        orm_mode = True
+
+

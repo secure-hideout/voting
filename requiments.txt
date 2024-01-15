@@ -4,3 +4,6 @@ pyjwt
 passlib
 python-multipart
 bcrypt
+fastapi
+jose
+"python-jose[cryptography]"
