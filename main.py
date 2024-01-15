@@ -333,5 +333,14 @@ async def get_all_voters():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Election status not found")
     return result
 
+@app.get("/voter/{voter_id}")
+async def get_by_id(voter_id):
+    query = "SELECT * FROM voters WHERE voter_id = '"+voter_id+"'"
+    result = await database.fetch_all(query)
+    print(result)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Election status not found")
+    return result
+
 
 
