@@ -442,7 +442,7 @@ async def get_election_results():
     }
 
 
-@app.get("/gevs/results", response_model=dict)
+@app.get("/gevs/results")
 async def get_election_results():
     # Check if the election is active
     check_election_query = "SELECT is_active FROM election WHERE id = 1"
