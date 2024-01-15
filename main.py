@@ -368,23 +368,33 @@ async def get_candidate_with_highest_vote_count():
 
     return result
 
+
 @app.get("/parties/most-seats-won")
 async def get_party_with_most_seats_won():
-    query = """
-        SELECT p.party_id, p.party, COUNT(c.canid) AS seats_won
+    # Query to get the party with the most seats won
+    party_query = """
+        SELECT p.party AS party, COUNT(c.canid) AS seats_won
         FROM party AS p
         JOIN candidate AS c ON p.party_id = c.party_id
-        WHERE c.vote_count = (SELECT MAX(vote_count) FROM candidate)
-        GROUP BY p.party_id, p.party
-        ORDER BY seats_won DESC
-        LIMIT 1;
+        GROUP BY p.party;
     """
-    result = await database.fetch_one(query)
 
-    if not result:
+    party_results = await database.fetch_all(party_query)
+
+    if not party_results:
         return "Hung Parliament"
 
-    return result
+    # Calculate the total number of seats
+    total_seats = sum(result["seats_won"] for result in party_results)
+
+    # Find the party with the most seats won
+    most_seats_party = max(party_results, key=lambda x: x["seats_won"])
+
+    # Check if the winning party has more than 50% of total seats
+    if most_seats_party["seats_won"] > total_seats / 2:
+        return most_seats_party["party"]
+    else:
+        return "Hung Parliament"
 @app.get("/gevs/constituency/{constituency_name}")
 async def get_candidates_by_constituency(constituency_name: str):
     query = """
@@ -473,13 +483,23 @@ async def get_election_results():
         if not seats_result:
             raise HTTPException(status_code=404, detail="No election results found")
 
+        # Calculate the total number of seats
+        total_seats = sum(result["seat"] for result in seats_result)
+
         # Find the party with the most seats (winner)
-        winner_party = max(seats_result, key=lambda x: x["seat"])["party"]
+        winner_party = max(seats_result, key=lambda x: x["seat"])
+
+        # Check if the winning party has more than 50% of total seats
+        if winner_party["seat"] > total_seats / 2:
+            winner_status = "Winner"
+        else:
+            winner_status = "Hung Elections"
 
         # Construct the response
         response = {
             "status": "Completed",
-            "winner": winner_party,
+            "winner": winner_party["party"],
+            "winner_status": winner_status,
             "seats": seats_result
         }
 
