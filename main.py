@@ -303,5 +303,25 @@ async def delete_candidate_by_id(canid: int):
     return None
 
 
+@app.put("/election/activate", status_code=status.HTTP_200_OK)
+async def activate_election():
+    update_query = "UPDATE election SET is_active = 'true'"
+    await database.execute(update_query)
+    return {"status": "Election has been activated"}
+
+@app.put("/election/deactivate", status_code=status.HTTP_200_OK)
+async def deactivate_election():
+    update_query = "UPDATE election SET is_active = 'false'"
+    await database.execute(update_query)
+    return {"status": "Election has been deactivated"}
+
+@app.get("/election/status", response_model=dict)
+async def get_election_status():
+    query = "SELECT is_active FROM election WHERE id=1"
+    result = await database.fetch_one(query)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Election status not found")
+    return {"is_active": result["is_active"]}
+
 
 
