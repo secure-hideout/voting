@@ -183,19 +183,19 @@ async def get_constituencies():
     return constituencies
 
 @app.post("/constituency/", response_model=models.Constituency)
-async def create_constituency(constituency: models.ConstituencyCreate, current_user: TokenData = Depends(get_current_user)):
+async def create_constituency(constituency: models.ConstituencyCreate):
     insert_query = f"INSERT INTO constituency (constituency_name) VALUES ('{constituency.constituency_name}')"
     last_record_id = await database.execute(insert_query)
     return {**constituency.dict(), "constituency_id": last_record_id}
 
 @app.put("/constituency/{constituency_id}", response_model=models.Constituency)
-async def update_constituency(constituency_id: int, constituency: models.ConstituencyCreate, current_user: TokenData = Depends(get_current_user)):
+async def update_constituency(constituency_id: int, constituency: models.ConstituencyCreate):
     update_query = f"UPDATE constituency SET constituency_name = '{constituency.constituency_name}' WHERE consitituency_id = {constituency_id}"
     await database.execute(update_query)
     return {**constituency.dict(), "constituency_id": constituency_id}
 
 @app.delete("/constituency/{constituency_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_constituency(constituency_id: int, current_user: TokenData = Depends(get_current_user)):
+async def delete_constituency(constituency_id: int):
     delete_query = f"DELETE FROM constituency WHERE consitituency_id = {constituency_id}"
     await database.execute(delete_query)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -209,21 +209,21 @@ async def get_party_by_id(party_id: int):
     return party
 
 @app.post("/party/", response_model=models.Party)
-async def create_party(party: models.PartyCreate, current_user: TokenData = Depends(get_current_user)):
+async def create_party(party: models.PartyCreate):
     insert_query = "INSERT INTO party (party) VALUES (:party_name)"
     values = {"party_name": party.party_name}
     party_id = await database.execute(insert_query, values=values)
     return {**party.dict(), "party_id": party_id}
 
 @app.put("/party/{party_id}", response_model=models.Party)
-async def update_party(party_id: int, party: models.PartyCreate, current_user: TokenData = Depends(get_current_user)):
+async def update_party(party_id: int, party: models.PartyCreate):
     update_query = "UPDATE party SET party = :party_name WHERE party_id = :party_id"
     values = {"party_name": party.party_name, "party_id": party_id}
     await database.execute(update_query, values=values)
     return {**party.dict(), "party_id": party_id}
 
 @app.delete("/party/{party_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_party(party_id: int, current_user: TokenData = Depends(get_current_user)):
+async def delete_party(party_id: int):
     delete_query = "DELETE FROM party WHERE party_id = :party_id"
     values = {"party_id": party_id}
     await database.execute(delete_query, values=values)
@@ -236,7 +236,7 @@ async def get_all_parties():
     return parties
 
 @app.post("/candidate/", response_model=models.Candidate)
-async def create_candidate(candidate: models.CandidateCreate, current_user: TokenData = Depends(get_current_user)):
+async def create_candidate(candidate: models.CandidateCreate):
     insert_query = (
         "INSERT INTO candidate (party_id, consitituency_id, vote_count, candidate) "
         "VALUES (:party_id, :constituency_id, :vote_count, :candidate)"
@@ -253,7 +253,7 @@ async def create_candidate(candidate: models.CandidateCreate, current_user: Toke
 
 
 @app.put("/candidate/{candidate_id}", response_model=models.Candidate)
-async def update_candidate(candidate_id: int, candidate: models.CandidateUpdate, current_user: TokenData = Depends(get_current_user)):
+async def update_candidate(candidate_id: int, candidate: models.CandidateUpdate):
     update_query = (
         "UPDATE candidate "
         "SET party_id = :party_id, consitituency_id = :constituency_id, vote_count = :vote_count "
@@ -268,6 +268,14 @@ async def update_candidate(candidate_id: int, candidate: models.CandidateUpdate,
     await database.execute(update_query, values)
     return {**candidate.dict(), "candidate_id": candidate_id}
 
+@app.get("/candidates/by-constituency/{consitituency_id}")
+async def get_candidates_by_constituency(consitituency_id: int):
+    query = f"SELECT * FROM candidate WHERE consitituency_id = {consitituency_id}"
+    candidates = await database.fetch_all(query)
+    if not candidates:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No candidates found for the specified constituency")
+    return candidates
+
 @app.get("/candidates")
 async def get_all_candidates():
     query = "SELECT * FROM candidate"
@@ -275,7 +283,7 @@ async def get_all_candidates():
     return candidates
 
 @app.delete("/candidate/{canid}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_candidate_by_id(canid: int, current_user: TokenData = Depends(get_current_user)):
+async def delete_candidate_by_id(canid: int):
     delete_query = "DELETE FROM candidate WHERE canid = :canid"
     values = {"canid": canid}
     await database.execute(delete_query, values=values)
